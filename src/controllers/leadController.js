@@ -145,3 +145,52 @@ exports.deleteLead = async (req, res) => {
         return res.status(500).json({ message: "Internal Server Error", status: false });
     }
 };
+// active lead
+exports.activeLead = async (req, res) => {
+    try {
+        const activeLeads = await Lead.find({ status: 1 });
+        if (activeLeads.length === 0) {
+            return res.status(404).json({ message: "No active leads found", status: false, data: null });
+        }
+        return res.status(200).json({ message: "Active leads retrieved successfully", status: true, data: activeLeads });
+    } catch (error) {
+        console.error("Error in getactiveLeads:", error);
+        return res.status(500).json({ message: "Internal Server Error", status: false, data: null });
+    }
+};
+//  make in active or inActive
+exports.makeInactiveLead = async (req, res) => {
+    try {
+        const { id } = req.body;
+        if (!id) {
+            return res.status(400).json({ message: "ID is required", status: false, data: null });
+        }
+        const lead = await Lead.findById(id);
+        if (!lead) {
+            return res.status(404).json({ message: "Lead does not exist with this ID", status: false, data: null });
+        }
+        const newStatus = lead.status === 1 ? 0 : 1;
+        const updatedLead = await Lead.findByIdAndUpdate(id, { status: newStatus }, { new: true });
+
+        const statusMessage = newStatus === 1 ? "Active" : "Inactive";
+        return res.status(200).json({ message: `lead status set to ${statusMessage}`, status: true, data: updatedLead });
+
+    } catch (error) {
+        console.error("Error in makeInactiveLead:", error);
+        return res.status(500).json({ message: "Internal Server Error", status: false, data: null });
+    }
+};
+
+// all inActive
+exports.getInactiveLeads = async (req, res) => {
+    try {
+        const inactiveLeads = await Lead.find({ status: 0 });
+        if (inactiveLeads.length === 0) {
+            return res.status(404).json({ message: "No inactive leads found", status: false, data: null });
+        }
+        return res.status(200).json({ message: "Inactive leads retrieved successfully", status: true, data: inactiveLeads });
+    } catch (error) {
+        console.error("Error in getInactiveleads:", error);
+        return res.status(500).json({ message: "Internal Server Error", status: false, data: null });
+    }
+};
