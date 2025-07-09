@@ -5,7 +5,6 @@ exports.createTask = async (req, res) => {
     try {
         const { title,description } = req.body;
         const image = req.file ? req.file.filename : "not available";
-
         const newTask = await Task.create({
             adminId:adminId,
             title,

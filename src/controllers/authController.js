@@ -61,7 +61,7 @@ exports.login = async (req, res) => {
             return res.status(400).json({ message: 'All fields are mandatory', status: false });
         }
 
-        const admin = await Author.findOne({ user_name  });
+        const admin = await Author.findOne({ user_name });
         if (!admin || !(await bcrypt.compare(password, admin.password))) {
             return res.status(401).json({ message: "Invalid user_name or Password", status: false });
         }
@@ -121,7 +121,7 @@ exports.profile = async (req, res) => {
 
 //------------------< UPDATE PROFILE >------------------//
 exports.updatedProfile = async (req, res) => {
-    const adminId=req.user?.id;
+    const adminId = req.user?.id;
     try {
         const admin = await Author.findById(adminId);
         if (!admin) {
@@ -170,35 +170,72 @@ exports.deleteAdmin = async (req, res) => {
     }
 };
 
-//------------------< CHANGE PASSWORD (With Token) >------------------//
-exports.changePassword = async (req, res) => {
+let virtualOtp = null;
+let virtualid;
+exports.sendOtpToResetPassword = async (req, res) => {
+    const { email } = req.body;
+
+    if (!email) {
+        return res.status(400).json({ message: 'Email is required.', status: false, data: null });
+    }
+
     try {
-        const { password, confirm_password } = req.body;
+        const userInfo = await Author.findOne({ email });
 
-        if (!password || !confirm_password) {
-            return res.status(400).json({ message: 'All fields are mandatory', status: false });
+        if (!userInfo) {
+            return res.status(404).json({ message: 'Email is not registered. Please sign up.', status: false, data: null });
         }
+        virtualid = userInfo._id;
+        const genOtp = generateOtp();
+        virtualOtp = genOtp;
 
-        if (password !== confirm_password) {
-            return res.status(400).json({ message: "Passwords do not match", status: false });
-        }
+        await transporter.sendMail({
+            from: process.env.EMAIL_FROM,
+            to: email,
+            subject: "Password Reset OTP",
+            text: `Your OTP is: ${genOtp} to reset your password.`
+        });
 
-        const hashedPassword = await bcrypt.hash(password, 10);
-
-        const updatedAdmin = await Author.findByIdAndUpdate(
-            req.user?.id,
-            { password: hashedPassword },
-            { new: true }
-        );
-
-        if (!updatedAdmin) {
-            return res.status(404).json({ message: "Admin not found", status: false });
-        }
-
-        return res.status(200).json({ message: "Password changed successfully", status: true });
-
+        return res.status(200).json({ message: 'OTP sent to your email. Please check your inbox.', status: true, data: null });
     } catch (error) {
-        console.error("Error changing password:", error);
-        return res.status(500).json({ message: "Internal Server Error", status: false });
+        console.error('Error sending OTP email:', error);
+        return res.status(500).json({ message: 'Internal server error.', status: false, data: null });
     }
 };
+
+
+//------------------< CHANGE PASSWORD OTP >------------------//
+exports.changePasswordByOtp = async (req, res) => {
+    try {
+        let otpAttempts = 0;
+        const { password, confirm_password, otp } = req.body;
+        console.log(password, confirm_password, otp);
+        if (!password || !confirm_password || !otp) {
+            return res.status(400).json({ message: 'All fields are mandatory', status: false, data: null });
+        }
+        if (otpAttempts >= 3) {
+            virtualOtp = null;
+            return res.status(400).json({ message: 'Your OTP has expired', status: false, data: null });
+        }
+        if (virtualOtp !== otp) {
+            otpAttempts++;
+            return res.status(400).json({ message: 'OTP does not match. Please enter the correct OTP', status: false, data: null });
+        }
+        if (password !== confirm_password) {
+            return res.status(400).json({ message: "Passwords do not match", status: false, data: null });
+        }
+        const newHashedPassword = await bcrypt.hash(password, 10);
+        const update = { password: newHashedPassword };
+        const updatedUser = await Author.findByIdAndUpdate(virtualid, update, { new: true });
+        if (!updatedUser) {
+            return res.status(404).json({ message: "User not found", status: false, data: null });
+        }
+        virtualOtp = null;
+        otpAttempts = 0;
+        return res.status(200).json({ message: "Password changed successfully", status: true, data: updatedUser });
+    } catch (error) {
+        console.error("Error changing password:", error);
+        return res.status(500).json({ message: 'Internal Server Error', status: false, data: null });
+    }
+};
+

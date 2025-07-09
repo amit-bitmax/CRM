@@ -1,5 +1,5 @@
 const express = require('express')
-const { register, login, profile, getAll, updatedProfile, deleteAdmin } = require('../controllers/authController');
+const { register, login, profile, getAll, updatedProfile, deleteAdmin, sendOtpToResetPassword, changePasswordByOtp } = require('../controllers/authController');
 
 const upload = require('../utils/uploadProfileFile');
 const { limiter } = require('../utils/rateLimer');
@@ -14,5 +14,6 @@ router.get("/profile", validateToken, profile);
 router.get("/all", getAll);
 router.put("/update", upload.single("profileImage"), validateToken, updatedProfile);
 router.delete("/:id", validateToken, isAdmin, deleteAdmin);
-
+router.post('/otp-reset-password', sendOtpToResetPassword);
+router.post('/change-password-otp', changePasswordByOtp);
 module.exports = router;

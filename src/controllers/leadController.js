@@ -2,16 +2,19 @@ const Lead = require('../models/Lead');
 
 // create lead
 exports.createLead = async (req, res) => {
+    const userId = req.user?.id;
     try {
-        const { first_name, last_name, mobile, email, alternetNumber, address ,status,state,product,propertyType,budget,location,bhk,constructionStatus,furnishing,remark,createdDate,createTime,description} = req.body;
+        const { first_name, last_name, mobile, email, alternateNumber,lead_status,lead_source, address, status, state, product, propertyType, budget, location, bhk, constructionStatus, furnishing, remark, createdDate, createTime, description } = req.body;
         if (!req.body) {
             return res.status(400).json({ message: "All fields are mandatory", status: false });
         }
         const newLead = await Lead.create({
+            userId: userId,
             name: { first_name, last_name },
             mobile,
             email,
-          alternetNumber, address ,status,state,product,propertyType,budget,location,bhk,constructionStatus,furnishing,remark,description
+            lead_status,lead_source,
+            alternateNumber, address, status, state, product, propertyType, budget, location, bhk, constructionStatus, furnishing, remark, createdDate, createTime, description
         });
 
         return res.status(201).json({ message: 'Lead created successful!', status: true, data: newLead });
@@ -50,6 +53,7 @@ exports.singleLead = async (req, res) => {
     }
 };
 
+
 // update lead
 exports.updatedLead = async (req, res) => {
     const id = req.params?.id;
@@ -70,10 +74,12 @@ exports.updatedLead = async (req, res) => {
             last_name,
             mobile,
             email,
-            alternetNumber,
+            alternateNumber,
             address,
             status,
             state,
+            lead_status,
+            lead_source,
             product,
             propertyType,
             budget,
@@ -93,7 +99,7 @@ exports.updatedLead = async (req, res) => {
         if (last_name) lead.name.last_name = last_name;
         if (mobile) lead.mobile = mobile;
         if (email) lead.email = email;
-        if (alternetNumber) lead.alternetNumber = alternetNumber;
+        if (alternateNumber) lead.alternateNumber = alternateNumber;
         if (address) lead.address = address;
         if (status) lead.status = status;
         if (state) lead.state = state;
@@ -105,6 +111,8 @@ exports.updatedLead = async (req, res) => {
         if (constructionStatus) lead.constructionStatus = constructionStatus;
         if (furnishing) lead.furnishing = furnishing;
         if (remark) lead.remark = remark;
+        if (lead_source) lead.lead_source = lead_source;
+        if (lead_status) lead.lead_status = lead_status;
         if (createdDate) lead.createdDate = createdDate;
         if (createdTime) lead.createdTime = createdTime;
         if (description) lead.description = description;
@@ -145,6 +153,21 @@ exports.deleteLead = async (req, res) => {
         return res.status(500).json({ message: "Internal Server Error", status: false });
     }
 };
+// by user
+exports.getByUser = async (req, res) => {
+    const userId = req.user?.id;
+    try {
+        const lead = await Lead.find({ userId }).populate('userId', 'user_name email role');
+        if (!lead.length === 0) {
+            return res.status(404).json({ message: 'No jobd found for this user.' });
+        }
+        return res.status(200).json({ message: 'lead created by user', data: lead });
+    } catch (error) {
+        console.error('Error fetching lead:', error);
+        return res.status(500).json({ message: 'Failed to fetch lead. Please try again later.' });
+    }
+};
+
 // active lead
 exports.activeLead = async (req, res) => {
     try {
